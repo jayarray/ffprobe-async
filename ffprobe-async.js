@@ -76,7 +76,7 @@ function is_video(src) {
         return;
       }
       resolve({ isVideo: results.types.includes('video'), error: results.error });
-    });
+    }).catch(fatalFail);
   });
 }
 
@@ -91,7 +91,7 @@ function is_audio(src) {
         isAudio: results.types.includes('audio') && !results.types.includes('video'),
         error: results.error
       });
-    });
+    }).catch(fatalFail);
   });
 }
 
@@ -116,7 +116,20 @@ function duration(src) {  // in seconds
 
         return (hours * 3600) + (minutes * 60) + (seconds);
       }
-    });
+    }).catch(fatalFail);
+  });
+}
+
+function info(src) {
+  return new Promise(resolve => {
+    let args = `-v quiet -print_format json -show_format -show_streams ${src}`; // If fails, put double-quotes around src
+    execute('ffprobe', args.split(' ')).then(results => {
+      if (results.stderr) {
+        resolve({ info: null, error: results.stderr });
+        return;
+      }
+      resolve({ info: JSON.parse(results.stdout), error: null });
+    }).catch(fatalFail);
   });
 }
 
@@ -128,3 +141,4 @@ exports.codec_types = codec_types;
 exports.is_video = is_video;
 exports.is_audio = is_audio;
 exports.duration = duration;
+exports.info = info;
