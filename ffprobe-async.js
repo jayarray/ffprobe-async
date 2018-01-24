@@ -47,8 +47,8 @@ function execute(cmd, args) {
 
 function codec_types(src) { // returns audio, video, or both
   return new Promise(resolve => {
-    let args = `-v error -show_entries stream=codec_type -of default=nw=1 ${src}`; // If fails, put double-quotes around src
-    execute('ffprobe', args.split(' ')).then(results => {
+    let args = `-v error -show_entries stream=codec_type -of default=nw=1 ${src}`.split(' '); // If fails, put double-quotes around src
+    execute('ffprobe', args).then(results => {
       if (results.stderr) {
         resolve({ types: null, error: results.stderr });
         return;
@@ -95,37 +95,73 @@ function is_audio(src) {
   });
 }
 
-function duration(src) {  // in seconds
+function duration_string(src) {
   return new Promise(resolve => {
-    let argStr = '-i ' + filepath + ' -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 -sexagesimal';
-
-    execute('ffprobe', args.split(' ')).then(results => {
+    let args = `-i ${src} -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 -sexagesimal`.split(' ');
+    execute('ffprobe', args).then(results => {
       if (results.stderr) {
         resolve({ seconds: null, error: results.stderr });
         return;
       }
+      resolve({ string: results.stdout.trim(), error: null });
+    }).catch(fatalFail);
+  });
+}
 
-      if (results.stdout.trim()) {
-        let parts = results.stdout.trim().split(':');
-        let hours = parseInt(parts[0]);
-        let minutes = parseInt(parts[1]);
-        let secondsParts = parts[2].split('.');
-        let seconds = parseInt(secondsParts[0]);
-        resolve({ seconds: (hours * 3600) + (minutes * 60) + (seconds), error: null });
+function duration_time_units(src) {
+  return new Promise(resolve => {
+    duration_string(src).then(results => {
+      if (results.error) {
+        resolve({ units: null, error: results.error });
+        return;
       }
+
+      if (results.string.trim() && results.string.split(':').length == 3) {
+        let parts = results.stdout.trim().split(':');
+        let hours = parseFloat(parts[0]);
+        let minutes = parseFloat(parts[1]);
+        let seconds = parseFloat(parts[2].slice(0, 5).join(''));
+        resolve({
+          units: { hours: hours, minutes: minutes, seconds: seconds },  // float, float, float
+          error: null
+        });
+        return;
+      }
+      resolve({ units: null, error: null }); // No string returned
+    }).catch(fatalFail);
+  });
+}
+
+function duration_in_seconds(src) {  // in seconds
+  return new Promise(resolve => {
+    duration_string(src).then(results => {
+      if (results.error) {
+        resolve({ seconds: null, error: results.error });
+        return;
+      }
+
+      if (results.string.trim() && results.string.split(':').length == 3) {
+        let parts = results.stdout.trim().split(':');
+        let hours = parseFloat(parts[0]);
+        let minutes = parseFloat(parts[1]);
+        let seconds = parseFloat(parts[2].slice(0, 5).join(''));
+        resolve({ seconds: (hours * 3600) + (minutes * 60) + (seconds), error: null });  // float
+        return;
+      }
+      resolve({ seconds: null, error: null }); // No string returned
     }).catch(fatalFail);
   });
 }
 
 function info(src) {
   return new Promise(resolve => {
-    let args = `-v quiet -print_format json -show_format -show_streams ${src}`; // If fails, put double-quotes around src
-    execute('ffprobe', args.split(' ')).then(results => {
+    let args = `-v quiet -print_format json -show_format -show_streams ${src}`.split(' '); // If fails, put double-quotes around src
+    execute('ffprobe', args).then(results => {
       if (results.stderr) {
         resolve({ info: null, error: results.stderr });
         return;
       }
-      resolve({ info: JSON.parse(results.stdout), error: null });
+      resolve({ info: JSON.parse(results.stdout), error: null }); // returns { "streams": {...}, "formats": {...} }
     }).catch(fatalFail);
   });
 }
@@ -137,5 +173,7 @@ function info(src) {
 exports.codec_types = codec_types;
 exports.is_video = is_video;
 exports.is_audio = is_audio;
-exports.duration = duration;
+exports.duration_string = duration_string;
+exports.duration_time_units = duration_time_units;
+exports.duration_in_seconds = duration_in_seconds;
 exports.info = info;
