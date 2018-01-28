@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "Jesus Arevalo <isa90201@gmail.com>",
   "license": "ISC",
   "dependencies": {
     "filesystem-async": "^1.0.4"
