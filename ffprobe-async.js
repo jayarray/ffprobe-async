@@ -1,4 +1,4 @@
-let FILESYSTEM = ('filesystem-async');
+var FILESYSTEM = require('filesystem-async');
 
 //-----------------------------------
 // ERROR CATCHING
@@ -12,8 +12,8 @@ function fatalFail(error) {
 // FUNCTIONS
 
 function codec_types(src) { // returns 'audio', 'video', or both
-  return new Promise(resolve => {
-    FILESYSTEM.Path.exists().then(results => {
+  return new Promise((resolve, reject) => {
+    FILESYSTEM.Path.exists(src).then(results => {
       if (results.error) {
         reject({ types: null, error: results.error });
         return;
@@ -27,13 +27,13 @@ function codec_types(src) { // returns 'audio', 'video', or both
       let args = ['-v', 'error', '-show_entries', 'stream=codec_type', '-of', 'default=nw=1', src.trim()]; // If fails, put double-quotes around src
       FILESYSTEM.Execute.local('ffprobe', args).then(results => {
         if (results.stderr) {
-          resolve({ types: null, error: results.stderr });
+          reject({ types: null, error: results.stderr });
           return;
         }
 
         let types = [];
 
-        let lines = results.stdout;
+        let lines = results.stdout.split('\n');
         lines.forEach(line => {
           if (line.includes('audio'))
             types.push('audio');
@@ -47,21 +47,21 @@ function codec_types(src) { // returns 'audio', 'video', or both
 }
 
 function is_video(src) {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     FILESYSTEM.Path.exists(src).then(results => {
       if (results.error) {
-        reject({ types: null, error: results.error });
+        reject({ isVideo: null, error: results.error });
         return;
       }
 
       if (!results.exists) {
-        reject({ types: null, error: `Path does not exist: ${src}` });
+        reject({ isVideo: null, error: `Path does not exist: ${src}` });
         return;
       }
 
       codec_types(src.trim()).then(results => {
         if (results.error) {
-          resolve({ isVideo: null, error: results.error });
+          reject({ isVideo: null, error: results.error });
           return;
         }
         resolve({ isVideo: results.types.includes('video'), error: results.error });
@@ -71,21 +71,21 @@ function is_video(src) {
 }
 
 function is_audio(src) {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     FILESYSTEM.Path.exists(src).then(results => {
       if (results.error) {
-        reject({ types: null, error: results.error });
+        reject({ isAudio: null, error: results.error });
         return;
       }
 
       if (!results.exists) {
-        reject({ types: null, error: `Path does not exist: ${src}` });
+        reject({ isAudio: null, error: `Path does not exist: ${src}` });
         return;
       }
 
       codec_types(src.trim()).then(results => {
         if (results.error) {
-          resolve({ isVideo: null, error: results.error });
+          reject({ isAudio: null, error: results.error });
           return;
         }
         resolve({
@@ -93,126 +93,126 @@ function is_audio(src) {
           error: results.error
         });
       }).catch(fatalFail);
-    });
+    }).catch(fatalFail);
   });
 }
 
 function duration_string(src) {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     FILESYSTEM.Path.exists(src).then(results => {
       if (results.error) {
-        reject({ types: null, error: results.error });
+        reject({ string: null, error: results.error });
         return;
       }
 
       if (!results.exists) {
-        reject({ types: null, error: `Path does not exist: ${src}` });
+        reject({ string: null, error: `Path does not exist: ${src}` });
         return;
       }
 
       let args = ['-i', src.trim(), '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', '-sexagesimal'];
       FILESYSTEM.Execute.local('ffprobe', args).then(results => {
         if (results.stderr) {
-          resolve({ seconds: null, error: results.stderr });
+          reject({ string: null, error: results.stderr });
           return;
         }
         resolve({ string: results.stdout.trim(), error: null });
       }).catch(fatalFail);
-    });
+    }).catch(fatalFail);
   });
 }
 
 function duration_time_units(src) {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     FILESYSTEM.Path.exists(src).then(results => {
       if (results.error) {
-        reject({ types: null, error: results.error });
+        reject({ units: null, error: results.error });
         return;
       }
 
       if (!results.exists) {
-        reject({ types: null, error: `Path does not exist: ${src}` });
+        reject({ units: null, error: `Path does not exist: ${src}` });
         return;
       }
 
       duration_string(src.trim()).then(results => {
         if (results.error) {
-          resolve({ units: null, error: results.error });
+          reject({ units: null, error: results.error });
           return;
         }
 
         if (results.string.trim() && results.string.split(':').length == 3) {
-          let parts = results.stdout.trim().split(':');
+          let parts = results.string.trim().split(':');
           let hours = parseFloat(parts[0]);
           let minutes = parseFloat(parts[1]);
-          let seconds = parseFloat(parts[2].slice(0, 5).join(''));
+          let seconds = parseFloat(parts[2].substring(0, 5));
           resolve({
             units: { hours: hours, minutes: minutes, seconds: seconds },  // float, float, float
             error: null
           });
           return;
         }
-        resolve({ units: null, error: null }); // No string returned
+        reject({ units: null, error: null }); // No string returned
       }).catch(fatalFail);
-    });
+    }).catch(fatalFail);
   });
 }
 
 function duration_in_seconds(src) {  // in seconds
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     FILESYSTEM.Path.exists(src).then(results => {
       if (results.error) {
-        reject({ types: null, error: results.error });
+        reject({ seconds: null, error: results.error });
         return;
       }
 
       if (!results.exists) {
-        reject({ types: null, error: `Path does not exist: ${src}` });
+        reject({ seconds: null, error: `Path does not exist: ${src}` });
         return;
       }
 
       duration_string(src.trim()).then(results => {
         if (results.error) {
-          resolve({ seconds: null, error: results.error });
+          reject({ seconds: null, error: results.error });
           return;
         }
 
         if (results.string.trim() && results.string.split(':').length == 3) {
-          let parts = results.stdout.trim().split(':');
+          let parts = results.string.trim().split(':');
           let hours = parseFloat(parts[0]);
           let minutes = parseFloat(parts[1]);
-          let seconds = parseFloat(parts[2].slice(0, 5).join(''));
+          let seconds = parseFloat(parts[2].substring(0, 5));
           resolve({ seconds: (hours * 3600) + (minutes * 60) + seconds, error: null });  // float
           return;
         }
-        resolve({ seconds: null, error: null }); // No string returned
+        reject({ seconds: null, error: null }); // No string returned
       }).catch(fatalFail);
-    });
+    }).catch(fatalFail);
   });
 }
 
 function info(src) {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     FILESYSTEM.Path.exists(src).then(results => {
       if (results.error) {
-        reject({ types: null, error: results.error });
+        reject({ info: null, error: results.error });
         return;
       }
 
       if (!results.exists) {
-        reject({ types: null, error: `Path does not exist: ${src}` });
+        reject({ info: null, error: `Path does not exist: ${src}` });
         return;
       }
 
       let args = ['-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', src.trim()];
       FILESYSTEM.Execute.local('ffprobe', args).then(results => {
         if (results.stderr) {
-          resolve({ info: null, error: results.stderr });
+          reject({ info: null, error: results.stderr });
           return;
         }
         resolve({ info: JSON.parse(results.stdout), error: null }); // returns { "streams": {...}, "formats": {...} }
       }).catch(fatalFail);
-    });
+    }).catch(fatalFail);
   });
 }
 
