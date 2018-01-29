@@ -1,7 +1,7 @@
 {
   "name": "ffprobe-async",
   "version": "1.0.1",
-  "description": "",
+  "description": "A collection of ffprobe commands",
   "main": "ffprobe-async.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
