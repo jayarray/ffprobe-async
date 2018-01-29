@@ -38,9 +38,9 @@ NOTE: types will have strings 'video', or 'audio' or both.
 * src: ```string```
 * returns: ```Promise```
 	* units: ```object```
-    * hours: ```float```
-    * minutes: ```float```
-    * seconds: ```float```
+    	* hours: ```float```
+    	* minutes: ```float```
+    	* seconds: ```float```
 	* error: ```string```
 
 ## duration_in_seconds(src)
@@ -53,8 +53,8 @@ NOTE: types will have strings 'video', or 'audio' or both.
 * src: ```string```
 * returns: ```Promise```
 	* info: ```object```
-    * stream: ```array```
-    * format: ```object```
+    	* stream: ```array```
+    	* format: ```object```
 	* error: ```string```
   
 NOTE: 'stream' can contain multiple objects that vary in the number of properties they contain, and 'format' is a single object with an overall description of 'src'. ( i.e. 'stream':[{p1,...,pX}, {q1,...qY}], 'format': {k1:v1, k2:v2} ).
