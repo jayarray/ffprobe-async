@@ -9,25 +9,48 @@ function fatalFail(error) {
 }
 
 //------------------------------------
+// SOURCE ERRORS
+
+function source_error(src) {
+  if (src == undefined)
+    return 'Path is undefined';
+  else if (src == null)
+    return 'Path is null';
+  else if (src == '')
+    return 'Path is empty';
+  else if (src.trim() == '')
+    return 'Path is whitespace';
+  else
+    return null;
+}
+
+//------------------------------------
 // FUNCTIONS
 
 function codec_types(src) { // returns 'audio', 'video', or both
   return new Promise((resolve, reject) => {
-    FILESYSTEM.Path.exists(src).then(results => {
+    let error = source_error(src);
+    if (error) {
+      reject({ types: null, error: `SRC_ERROR: ${error}` });
+      return;
+    }
+
+    let sTrimmed = src.trim();
+    FILESYSTEM.Path.exists(sTrimmed).then(results => {
       if (results.error) {
-        reject({ types: null, error: results.error });
+        reject({ types: null, error: `SRC_ERROR: ${results.error}` });
         return;
       }
 
       if (!results.exists) {
-        reject({ types: null, error: `Path does not exist: ${src}` });
+        reject({ types: null, error: `SRC_ERROR: Path does not exist: ${sTrimmed}` });
         return;
       }
 
-      let args = ['-v', 'error', '-show_entries', 'stream=codec_type', '-of', 'default=nw=1', src.trim()]; // If fails, put double-quotes around src
+      let args = ['-v', 'error', '-show_entries', 'stream=codec_type', '-of', 'default=nw=1', sTrimmed]; // If fails, put double-quotes around src
       FILESYSTEM.Execute.local('ffprobe', args).then(results => {
         if (results.stderr) {
-          reject({ types: null, error: results.stderr });
+          reject({ types: null, error: `FFPROBE_ERROR: ${results.stderr}` });
           return;
         }
 
@@ -48,72 +71,55 @@ function codec_types(src) { // returns 'audio', 'video', or both
 
 function is_video(src) {
   return new Promise((resolve, reject) => {
-    FILESYSTEM.Path.exists(src).then(results => {
+    codec_types(src.trim()).then(results => {
       if (results.error) {
         reject({ isVideo: null, error: results.error });
         return;
       }
-
-      if (!results.exists) {
-        reject({ isVideo: null, error: `Path does not exist: ${src}` });
-        return;
-      }
-
-      codec_types(src.trim()).then(results => {
-        if (results.error) {
-          reject({ isVideo: null, error: results.error });
-          return;
-        }
-        resolve({ isVideo: results.types.includes('video'), error: results.error });
-      }).catch(fatalFail);
+      resolve({ isVideo: results.types.includes('video'), error: results.error });
     }).catch(fatalFail);
   });
 }
 
 function is_audio(src) {
   return new Promise((resolve, reject) => {
-    FILESYSTEM.Path.exists(src).then(results => {
+    codec_types(src.trim()).then(results => {
       if (results.error) {
         reject({ isAudio: null, error: results.error });
         return;
       }
-
-      if (!results.exists) {
-        reject({ isAudio: null, error: `Path does not exist: ${src}` });
-        return;
-      }
-
-      codec_types(src.trim()).then(results => {
-        if (results.error) {
-          reject({ isAudio: null, error: results.error });
-          return;
-        }
-        resolve({
-          isAudio: results.types.includes('audio') && !results.types.includes('video'),
-          error: results.error
-        });
-      }).catch(fatalFail);
+      resolve({
+        isAudio: results.types.includes('audio') && !results.types.includes('video'),
+        error: results.error
+      });
     }).catch(fatalFail);
   });
 }
 
 function duration_string(src) {
   return new Promise((resolve, reject) => {
-    FILESYSTEM.Path.exists(src).then(results => {
+    let error = source_error(src);
+    if (error) {
+      reject({ string: null, error: `SRC_ERROR: ${error}` });
+      return;
+    }
+
+    let sTrimmed = src.trim();
+    FILESYSTEM.Path.exists(sTrimmed).then(results => {
       if (results.error) {
-        reject({ string: null, error: results.error });
+        reject({ string: null, error: `SRC_ERROR: ${results.error}` });
         return;
       }
 
       if (!results.exists) {
-        reject({ string: null, error: `Path does not exist: ${src}` });
+        reject({ string: null, error: `SRC_ERROR: Path does not exist: ${sTrimmed}` });
         return;
       }
 
-      let args = ['-i', src.trim(), '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', '-sexagesimal'];
+      let args = ['-i', sTrimmed, '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', '-sexagesimal'];
       FILESYSTEM.Execute.local('ffprobe', args).then(results => {
         if (results.stderr) {
-          reject({ string: null, error: results.stderr });
+          reject({ string: null, error: `FFPROBE_ERROR: ${results.stderr}` });
           return;
         }
         resolve({ string: results.stdout.trim(), error: null });
@@ -124,25 +130,33 @@ function duration_string(src) {
 
 function duration_time_units(src) {
   return new Promise((resolve, reject) => {
-    FILESYSTEM.Path.exists(src).then(results => {
+    let error = source_error(src);
+    if (error) {
+      reject({ units: null, error: `SRC_ERROR: ${error}` });
+      return;
+    }
+
+    let sTrimmed = src.trim();
+    FILESYSTEM.Path.exists(sTrimmed).then(results => {
       if (results.error) {
-        reject({ units: null, error: results.error });
+        reject({ units: null, error: `SRC_ERROR: ${results.error}` });
         return;
       }
 
       if (!results.exists) {
-        reject({ units: null, error: `Path does not exist: ${src}` });
+        reject({ units: null, error: `SRC_ERROR: Path does not exist: ${sTrimmed}` });
         return;
       }
 
-      duration_string(src.trim()).then(results => {
+      duration_string(sTrimmed).then(results => {
         if (results.error) {
           reject({ units: null, error: results.error });
           return;
         }
 
-        if (results.string.trim() && results.string.split(':').length == 3) {
-          let parts = results.string.trim().split(':');
+        let strTrimmed = results.string.trim();
+        if (strTrimmed && strTrimmed.split(':').length == 3) {
+          let parts = strTrimmed.split(':');
           let hours = parseFloat(parts[0]);
           let minutes = parseFloat(parts[1]);
           let seconds = parseFloat(parts[2].substring(0, 5));
@@ -160,25 +174,33 @@ function duration_time_units(src) {
 
 function duration_in_seconds(src) {  // in seconds
   return new Promise((resolve, reject) => {
-    FILESYSTEM.Path.exists(src).then(results => {
+    let error = source_error(src);
+    if (error) {
+      reject({ seconds: null, error: `SRC_ERROR: ${error}` });
+      return;
+    }
+
+    let sTrimmed = src.trim();
+    FILESYSTEM.Path.exists(sTrimmed).then(results => {
       if (results.error) {
-        reject({ seconds: null, error: results.error });
+        reject({ seconds: null, error: `SRC_ERROR: ${results.error}` });
         return;
       }
 
       if (!results.exists) {
-        reject({ seconds: null, error: `Path does not exist: ${src}` });
+        reject({ seconds: null, error: `SRC_ERROR: Path does not exist: ${sTrimmed}` });
         return;
       }
 
-      duration_string(src.trim()).then(results => {
+      duration_string(sTrimmed).then(results => {
         if (results.error) {
           reject({ seconds: null, error: results.error });
           return;
         }
 
-        if (results.string.trim() && results.string.split(':').length == 3) {
-          let parts = results.string.trim().split(':');
+        let strTrimmed = results.string.trim();
+        if (strTrimmed && strTrimmed.split(':').length == 3) {
+          let parts = strTrimmed.split(':');
           let hours = parseFloat(parts[0]);
           let minutes = parseFloat(parts[1]);
           let seconds = parseFloat(parts[2].substring(0, 5));
@@ -193,21 +215,28 @@ function duration_in_seconds(src) {  // in seconds
 
 function info(src) {
   return new Promise((resolve, reject) => {
-    FILESYSTEM.Path.exists(src).then(results => {
+    let error = source_error(src);
+    if (error) {
+      reject({ info: null, error: `SRC_ERROR: ${error}` });
+      return;
+    }
+
+    let sTrimmed = src.trim();
+    FILESYSTEM.Path.exists(sTrimmed).then(results => {
       if (results.error) {
-        reject({ info: null, error: results.error });
+        reject({ info: null, error: `SRC_ERROR: ${results.error}` });
         return;
       }
 
       if (!results.exists) {
-        reject({ info: null, error: `Path does not exist: ${src}` });
+        reject({ info: null, error: `SRC_ERROR: Path does not exist: ${sTrimmed}` });
         return;
       }
 
-      let args = ['-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', src.trim()];
+      let args = ['-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', sTrimmed];
       FILESYSTEM.Execute.local('ffprobe', args).then(results => {
         if (results.stderr) {
-          reject({ info: null, error: results.stderr });
+          reject({ info: null, error: `FFPROBE_ERROR: ${results.stderr}` });
           return;
         }
         resolve({ info: JSON.parse(results.stdout), error: null }); // returns { "streams": {...}, "formats": {...} }
