@@ -12,7 +12,7 @@ function fatalFail(error) {
 // SOURCE ERRORS
 
 function source_error(src) {
-  if (src == undefined)
+  if (src === undefined)
     return 'Path is undefined';
   else if (src == null)
     return 'Path is null';
@@ -71,7 +71,7 @@ function codec_types(src) { // returns 'audio', 'video', or both
 
 function is_video(src) {
   return new Promise((resolve, reject) => {
-    codec_types(src.trim()).then(results => {
+    codec_types(src).then(results => {
       if (results.error) {
         reject({ isVideo: null, error: results.error });
         return;
@@ -83,7 +83,7 @@ function is_video(src) {
 
 function is_audio(src) {
   return new Promise((resolve, reject) => {
-    codec_types(src.trim()).then(results => {
+    codec_types(src).then(results => {
       if (results.error) {
         reject({ isAudio: null, error: results.error });
         return;
