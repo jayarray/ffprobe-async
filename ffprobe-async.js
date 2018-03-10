@@ -1,17 +1,10 @@
-var FILESYSTEM = require('filesystem-async');
-
-//-----------------------------------
-// ERROR CATCHING
-
-function fatalFail(error) {
-  console.log(error);
-  process.exit(-1);
-}
+let LINUX = require('linux-commands-async');
+let EXECUTOR = LINUX.EXECUTOR.LOCAL;
 
 //------------------------------------
 // SOURCE ERRORS
 
-function source_error(src) {
+function SourceError(src) {
   if (src === undefined)
     return 'Path is undefined';
   else if (src == null)
@@ -27,231 +20,169 @@ function source_error(src) {
 //------------------------------------
 // FUNCTIONS
 
-function codec_types(src) { // returns 'audio', 'video', or both
+function CodecTypes(src) { // returns 'audio', 'video', or both
+  let srcError = SourceError(src);
+  if (srcError)
+    return Promise.reject(`Failed to get codec types: ${srcError}`);
+
   return new Promise((resolve, reject) => {
-    let error = source_error(src);
-    if (error) {
-      reject({ types: null, error: `SRC_ERROR: ${error}` });
-      return;
-    }
-
-    let sTrimmed = src.trim();
-    FILESYSTEM.Path.exists(sTrimmed).then(results => {
-      if (results.error) {
-        reject({ types: null, error: `SRC_ERROR: ${results.error}` });
+    LINUX.Path.Exists(src, EXECUTOR).then(exists => {
+      if (!exists) {
+        reject(`Failed to get codec types: Path does not exist: ${src}`);
         return;
       }
 
-      if (!results.exists) {
-        reject({ types: null, error: `SRC_ERROR: Path does not exist: ${sTrimmed}` });
-        return;
-      }
-
-      let args = ['-v', 'error', '-show_entries', 'stream=codec_type', '-of', 'default=nw=1', sTrimmed]; // If fails, put double-quotes around src
-      FILESYSTEM.Execute.local('ffprobe', args).then(results => {
-        if (results.stderr) {
-          reject({ types: null, error: `FFPROBE_ERROR: ${results.stderr}` });
+      let args = ['-v', 'error', '-show_entries', 'stream=codec_type', '-of', 'default=nw=1', src]; // If fails, put double-quotes around src
+      EXECUTOR.Execute('ffprobe', args).then(output => {
+        if (output.stderr) {
+          reject(`Failed to get codec types: ${output.stderr}`);
           return;
         }
 
         let types = [];
 
-        let lines = results.stdout.split('\n');
+        let lines = output.stdout.split('\n');
         lines.forEach(line => {
           if (line.includes('audio'))
             types.push('audio');
           else if (line.includes('video'))
             types.push('video');
         });
-        resolve({ types: types, error: null });
-      }).catch(fatalFail);
+        resolve(types);
+      }).catch(error => `Failed to get codec types: ${error}`);
+    }).catch(error => `Failed to get codec types: ${error}`);
+  });
+}
+
+function IsVideo(src) {
+  return new Promise((resolve, reject) => {
+    CodecTypes(src).then(types => {
+      resolve(types.includes('video'));
     }).catch(fatalFail);
   });
 }
 
-function is_video(src) {
+function IsAudio(src) {
   return new Promise((resolve, reject) => {
-    codec_types(src).then(results => {
-      if (results.error) {
-        reject({ isVideo: null, error: results.error });
-        return;
-      }
-      resolve({ isVideo: results.types.includes('video'), error: results.error });
+    CodecTypes(src).then(types => {
+      resolve(types.includes('audio') && !types.includes('video'));
     }).catch(fatalFail);
   });
 }
 
-function is_audio(src) {
+function DurationString(src) {
+  let srcError = SourceError(src);
+  if (srcError)
+    return Promise.reject(`Failed to get duration string: ${srcError}`);
+
   return new Promise((resolve, reject) => {
-    codec_types(src).then(results => {
-      if (results.error) {
-        reject({ isAudio: null, error: results.error });
-        return;
-      }
-      resolve({
-        isAudio: results.types.includes('audio') && !results.types.includes('video'),
-        error: results.error
-      });
-    }).catch(fatalFail);
-  });
-}
-
-function duration_string(src) {
-  return new Promise((resolve, reject) => {
-    let error = source_error(src);
-    if (error) {
-      reject({ string: null, error: `SRC_ERROR: ${error}` });
-      return;
-    }
-
-    let sTrimmed = src.trim();
-    FILESYSTEM.Path.exists(sTrimmed).then(results => {
-      if (results.error) {
-        reject({ string: null, error: `SRC_ERROR: ${results.error}` });
+    LINUX.Path.Exists(src, EXECUTOR).then(exists => {
+      if (!exists) {
+        reject(`Failed to get duration string: Path does not exist: ${src}`);
         return;
       }
 
-      if (!results.exists) {
-        reject({ string: null, error: `SRC_ERROR: Path does not exist: ${sTrimmed}` });
-        return;
-      }
-
-      let args = ['-i', sTrimmed, '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', '-sexagesimal'];
-      FILESYSTEM.Execute.local('ffprobe', args).then(results => {
+      let args = ['-i', src, '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', '-sexagesimal'];
+      EXECUTOR.Execute('ffprobe', args).then(output => {
         if (results.stderr) {
-          reject({ string: null, error: `FFPROBE_ERROR: ${results.stderr}` });
+          reject(`Failed to get duration string: ${output.stderr}`);
           return;
         }
-        resolve({ string: results.stdout.trim(), error: null });
-      }).catch(fatalFail);
-    }).catch(fatalFail);
+        resolve(results.stdout.trim());
+      }).catch(error => `Failed to get duration string: ${error}`);
+    }).catch(error => `Failed to get duration string: ${error}`);
   });
 }
 
-function duration_time_units(src) {
+function DurationTimeUnits(src) {
+  let srcError = SourceError(src);
+  if (srcError)
+    return Promise.reject(`Failed to get duration time units: ${srcError}`);
+
   return new Promise((resolve, reject) => {
-    let error = source_error(src);
-    if (error) {
-      reject({ units: null, error: `SRC_ERROR: ${error}` });
-      return;
-    }
-
-    let sTrimmed = src.trim();
-    FILESYSTEM.Path.exists(sTrimmed).then(results => {
-      if (results.error) {
-        reject({ units: null, error: `SRC_ERROR: ${results.error}` });
+    LINUX.Path.Exists(src, EXECUTOR).then(exists => {
+      if (!exists) {
+        reject({ units: null, error: `Failed to get duration time units: Path does not exist: ${src}` });
         return;
       }
 
-      if (!results.exists) {
-        reject({ units: null, error: `SRC_ERROR: Path does not exist: ${sTrimmed}` });
-        return;
-      }
-
-      duration_string(sTrimmed).then(results => {
-        if (results.error) {
-          reject({ units: null, error: results.error });
-          return;
-        }
-
-        let strTrimmed = results.string.trim();
+      DurationString(src).then(string => {
+        let strTrimmed = string.trim();
         if (strTrimmed && strTrimmed.split(':').length == 3) {
           let parts = strTrimmed.split(':');
           let hours = parseFloat(parts[0]);
           let minutes = parseFloat(parts[1]);
           let seconds = parseFloat(parts[2].substring(0, 5));
           resolve({
-            units: { hours: hours, minutes: minutes, seconds: seconds },  // float, float, float
-            error: null
+            units: { hours: hours, minutes: minutes, seconds: seconds }  // float, float, float
           });
           return;
         }
-        reject({ units: null, error: null }); // No string returned
-      }).catch(fatalFail);
-    }).catch(fatalFail);
+        reject(`Failed to get duration time units: Unexpected error parsing duration string`);
+      }).catch(error => `Failed to get duration time units: ${error}`);
+    }).catch(error => `Failed to get duration time units: ${error}`);
   });
 }
 
-function duration_in_seconds(src) {  // in seconds
+function DurationInSeconds(src) {
+  let srcError = SourceError(src);
+  if (srcError)
+    return Promise.reject(`Failed to get duration time units: ${srcError}`);
+
   return new Promise((resolve, reject) => {
-    let error = source_error(src);
-    if (error) {
-      reject({ seconds: null, error: `SRC_ERROR: ${error}` });
-      return;
-    }
-
-    let sTrimmed = src.trim();
-    FILESYSTEM.Path.exists(sTrimmed).then(results => {
-      if (results.error) {
-        reject({ seconds: null, error: `SRC_ERROR: ${results.error}` });
+    LINUX.Path.Exists(src, EXECUTOR).then(exists => {
+      if (!exists) {
+        reject(`Failed to get duration in seconds: Path does not exist: ${src}`);
         return;
       }
 
-      if (!results.exists) {
-        reject({ seconds: null, error: `SRC_ERROR: Path does not exist: ${sTrimmed}` });
-        return;
-      }
-
-      duration_string(sTrimmed).then(results => {
-        if (results.error) {
-          reject({ seconds: null, error: results.error });
-          return;
-        }
-
-        let strTrimmed = results.string.trim();
+      DurationString(src).then(string => {
+        let strTrimmed = string.trim();
         if (strTrimmed && strTrimmed.split(':').length == 3) {
           let parts = strTrimmed.split(':');
           let hours = parseFloat(parts[0]);
           let minutes = parseFloat(parts[1]);
           let seconds = parseFloat(parts[2].substring(0, 5));
-          resolve({ seconds: (hours * 3600) + (minutes * 60) + seconds, error: null });  // float
+          resolve((hours * 3600) + (minutes * 60) + seconds);  // float
           return;
         }
-        reject({ seconds: null, error: null }); // No string returned
-      }).catch(fatalFail);
-    }).catch(fatalFail);
+        reject(`Failed to get duration in seconds: Unexpected error happened while parsing duration string`);
+      }).catch(error => `Failed to get duration in seconds: ${error}`);
+    }).catch(error => `Failed to get duration in seconds: ${error}`);
   });
 }
 
-function info(src) {
+function Info(src) {
+  let srcError = SourceError(src);
+  if (srcError)
+    return Promise.reject(`Failed to get info: ${srcError}`);
+
   return new Promise((resolve, reject) => {
-    let error = source_error(src);
-    if (error) {
-      reject({ info: null, error: `SRC_ERROR: ${error}` });
-      return;
-    }
-
-    let sTrimmed = src.trim();
-    FILESYSTEM.Path.exists(sTrimmed).then(results => {
-      if (results.error) {
-        reject({ info: null, error: `SRC_ERROR: ${results.error}` });
+    LINUX.Path.Exists(src, EXECUTOR).then(exists => {
+      if (!exists) {
+        reject({ info: null, error: `Failed to get info: Path does not exist: ${src}` });
         return;
       }
 
-      if (!results.exists) {
-        reject({ info: null, error: `SRC_ERROR: Path does not exist: ${sTrimmed}` });
-        return;
-      }
-
-      let args = ['-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', sTrimmed];
-      FILESYSTEM.Execute.local('ffprobe', args).then(results => {
-        if (results.stderr) {
-          reject({ info: null, error: `FFPROBE_ERROR: ${results.stderr}` });
+      let args = ['-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', src];
+      EXECUTOR.Execute('ffprobe', args).then(output => {
+        if (output.stderr) {
+          reject(`Failed to get info: ${output.stderr}`);
           return;
         }
-        resolve({ info: JSON.parse(results.stdout), error: null }); // returns { "streams": {...}, "formats": {...} }
-      }).catch(fatalFail);
-    }).catch(fatalFail);
+        resolve(JSON.parse(results.stdout)); // returns { "streams": {...}, "formats": {...} }
+      }).catch(error => `Failed to get info: ${error}`);
+    }).catch(error => `Failed to get info: ${error}`);
   });
 }
 
 //------------------------------------
 // EXPORTS
 
-exports.codec_types = codec_types;
-exports.is_video = is_video;
-exports.is_audio = is_audio;
-exports.duration_string = duration_string;
-exports.duration_time_units = duration_time_units;
-exports.duration_in_seconds = duration_in_seconds;
-exports.info = info;
+exports.CodecTypes = CodecTypes;
+exports.IsVideo = IsVideo;
+exports.IsAudio = IsAudio;
+exports.DurationString = DurationString;
+exports.DurationTimeUnits = DurationTimeUnits;
+exports.DurationInSeconds = DurationInSeconds;
+exports.Info = Info;
