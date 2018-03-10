@@ -20,6 +20,10 @@ function SourceError(src) {
 //------------------------------------
 // FUNCTIONS
 
+/**
+ * @param {string} src Source
+ * @returns {Promise<Array<string>>} Returns a promise. If it resolves, it returns an array of strings. Else, it returns an error.
+ */
 function CodecTypes(src) { // returns 'audio', 'video', or both
   let srcError = SourceError(src);
   if (srcError)
@@ -54,22 +58,34 @@ function CodecTypes(src) { // returns 'audio', 'video', or both
   });
 }
 
+/**
+ * @param {string} src Source
+ * @returns {Promise<boolean>} Returns a promise. If it resolves, it returns a boolean value. Else, it returns an error.
+ */
 function IsVideo(src) {
   return new Promise((resolve, reject) => {
     CodecTypes(src).then(types => {
       resolve(types.includes('video'));
-    }).catch(fatalFail);
+    }).catch(error => `Failed to check if source is a video: ${error}`);
   });
 }
 
+/**
+ * @param {string} src Source
+ * @returns {Promise<boolean>} Returns a promise. If it resolves, it returns a boolean value. Else, it returns an error.
+ */
 function IsAudio(src) {
   return new Promise((resolve, reject) => {
     CodecTypes(src).then(types => {
       resolve(types.includes('audio') && !types.includes('video'));
-    }).catch(fatalFail);
+    }).catch(error => `Failed to check if source is an audio file: ${error}`);
   });
 }
 
+/**
+ * @param {string} src Source
+ * @returns {Promise<string>} Returns a promise. If it resolves, it returns a string. Else, it returns an error.
+ */
 function DurationString(src) {
   let srcError = SourceError(src);
   if (srcError)
@@ -94,6 +110,10 @@ function DurationString(src) {
   });
 }
 
+/**
+ * @param {string} src Source
+ * @returns {Promise<{hours: number, minutes: number, seconds: number}>} Returns a promise. If it resolves, it returns an object. Else, it returns an error.
+ */
 function DurationTimeUnits(src) {
   let srcError = SourceError(src);
   if (srcError)
@@ -102,7 +122,7 @@ function DurationTimeUnits(src) {
   return new Promise((resolve, reject) => {
     LINUX.Path.Exists(src, EXECUTOR).then(exists => {
       if (!exists) {
-        reject({ units: null, error: `Failed to get duration time units: Path does not exist: ${src}` });
+        reject(`Failed to get duration time units: Path does not exist: ${src}`);
         return;
       }
 
@@ -114,7 +134,9 @@ function DurationTimeUnits(src) {
           let minutes = parseFloat(parts[1]);
           let seconds = parseFloat(parts[2].substring(0, 5));
           resolve({
-            units: { hours: hours, minutes: minutes, seconds: seconds }  // float, float, float
+            hours: hours,
+            minutes: minutes,
+            seconds: seconds  // all floats
           });
           return;
         }
@@ -124,6 +146,10 @@ function DurationTimeUnits(src) {
   });
 }
 
+/**
+ * @param {string} src Source
+ * @returns {Promise<number>} Returns a promise. If it resolves, it returns a number. Else, it returns an error.
+ */
 function DurationInSeconds(src) {
   let srcError = SourceError(src);
   if (srcError)
@@ -152,6 +178,10 @@ function DurationInSeconds(src) {
   });
 }
 
+/**
+ * @param {string} src Source
+ * @returns {Promise<{streams: Object, formats: Object}>} Returns a promise. If it resolves, it returns an object. Else, it returns an error.
+ */
 function Info(src) {
   let srcError = SourceError(src);
   if (srcError)
