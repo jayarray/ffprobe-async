@@ -1,5 +1,5 @@
 let LINUX = require('linux-commands-async');
-let EXECUTOR = LINUX.EXECUTOR.LOCAL;
+let EXECUTOR = LINUX.Command.LOCAL;
 
 //------------------------------------
 // SOURCE ERRORS
@@ -84,11 +84,11 @@ function DurationString(src) {
 
       let args = ['-i', src, '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', '-sexagesimal'];
       EXECUTOR.Execute('ffprobe', args).then(output => {
-        if (results.stderr) {
+        if (output.stderr) {
           reject(`Failed to get duration string: ${output.stderr}`);
           return;
         }
-        resolve(results.stdout.trim());
+        resolve(output.stdout.trim());
       }).catch(error => `Failed to get duration string: ${error}`);
     }).catch(error => `Failed to get duration string: ${error}`);
   });
@@ -170,11 +170,19 @@ function Info(src) {
           reject(`Failed to get info: ${output.stderr}`);
           return;
         }
-        resolve(JSON.parse(results.stdout)); // returns { "streams": {...}, "formats": {...} }
+        resolve(JSON.parse(output.stdout.trim())); // returns { "streams": {...}, "formats": {...} }
       }).catch(error => `Failed to get info: ${error}`);
     }).catch(error => `Failed to get info: ${error}`);
   });
 }
+
+//-----------------------------------
+
+let src = '/home/isa/Desktop/YouTube/google-mini/dev/isa-dancing.flv';
+
+DurationInSeconds(src).then(o =>{
+  console.log(`OUTPUT: ${JSON.stringify(o)}`);
+}).catch(error => console.log(`ERROR: ${error}`));
 
 //------------------------------------
 // EXPORTS
