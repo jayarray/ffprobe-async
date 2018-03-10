@@ -176,14 +176,6 @@ function Info(src) {
   });
 }
 
-//-----------------------------------
-
-let src = '/home/isa/Desktop/YouTube/google-mini/dev/isa-dancing.flv';
-
-DurationInSeconds(src).then(o =>{
-  console.log(`OUTPUT: ${JSON.stringify(o)}`);
-}).catch(error => console.log(`ERROR: ${error}`));
-
 //------------------------------------
 // EXPORTS
 
