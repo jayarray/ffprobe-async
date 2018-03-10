@@ -9,6 +9,6 @@
   "author": "Jesus Arevalo <isa90201@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "filesystem-async": "^1.0.4"
+    "linux-commands-async": "^1.0.0"
   }
 }
