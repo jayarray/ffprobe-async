@@ -30,30 +30,23 @@ function CodecTypes(src) { // returns 'audio', 'video', or both
     return Promise.reject(`Failed to get codec types: ${srcError}`);
 
   return new Promise((resolve, reject) => {
-    LINUX.Path.Exists(src, EXECUTOR).then(exists => {
-      if (!exists) {
-        reject(`Failed to get codec types: Path does not exist: ${src}`);
+    let args = ['-v', 'error', '-show_entries', 'stream=codec_type', '-of', 'default=nw=1', src]; // If fails, put double-quotes around src
+    EXECUTOR.Execute('ffprobe', args).then(output => {
+      if (output.stderr) {
+        reject(`Failed to get codec types: ${output.stderr}`);
         return;
       }
 
-      let args = ['-v', 'error', '-show_entries', 'stream=codec_type', '-of', 'default=nw=1', src]; // If fails, put double-quotes around src
-      EXECUTOR.Execute('ffprobe', args).then(output => {
-        if (output.stderr) {
-          reject(`Failed to get codec types: ${output.stderr}`);
-          return;
-        }
+      let types = [];
 
-        let types = [];
-
-        let lines = output.stdout.split('\n');
-        lines.forEach(line => {
-          if (line.includes('audio'))
-            types.push('audio');
-          else if (line.includes('video'))
-            types.push('video');
-        });
-        resolve(types);
-      }).catch(error => `Failed to get codec types: ${error}`);
+      let lines = output.stdout.split('\n');
+      lines.forEach(line => {
+        if (line.includes('audio'))
+          types.push('audio');
+        else if (line.includes('video'))
+          types.push('video');
+      });
+      resolve(types);
     }).catch(error => `Failed to get codec types: ${error}`);
   });
 }
@@ -92,20 +85,13 @@ function DurationString(src) {
     return Promise.reject(`Failed to get duration string: ${srcError}`);
 
   return new Promise((resolve, reject) => {
-    LINUX.Path.Exists(src, EXECUTOR).then(exists => {
-      if (!exists) {
-        reject(`Failed to get duration string: Path does not exist: ${src}`);
+    let args = ['-i', src, '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', '-sexagesimal'];
+    EXECUTOR.Execute('ffprobe', args).then(output => {
+      if (output.stderr) {
+        reject(`Failed to get duration string: ${output.stderr}`);
         return;
       }
-
-      let args = ['-i', src, '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', '-sexagesimal'];
-      EXECUTOR.Execute('ffprobe', args).then(output => {
-        if (output.stderr) {
-          reject(`Failed to get duration string: ${output.stderr}`);
-          return;
-        }
-        resolve(output.stdout.trim());
-      }).catch(error => `Failed to get duration string: ${error}`);
+      resolve(output.stdout.trim());
     }).catch(error => `Failed to get duration string: ${error}`);
   });
 }
@@ -120,28 +106,21 @@ function DurationTimeUnits(src) {
     return Promise.reject(`Failed to get duration time units: ${srcError}`);
 
   return new Promise((resolve, reject) => {
-    LINUX.Path.Exists(src, EXECUTOR).then(exists => {
-      if (!exists) {
-        reject(`Failed to get duration time units: Path does not exist: ${src}`);
+    DurationString(src).then(string => {
+      let strTrimmed = string.trim();
+      if (strTrimmed && strTrimmed.split(':').length == 3) {
+        let parts = strTrimmed.split(':');
+        let hours = parseFloat(parts[0]);
+        let minutes = parseFloat(parts[1]);
+        let seconds = parseFloat(parts[2].substring(0, 5));
+        resolve({
+          hours: hours,
+          minutes: minutes,
+          seconds: seconds  // all floats
+        });
         return;
       }
-
-      DurationString(src).then(string => {
-        let strTrimmed = string.trim();
-        if (strTrimmed && strTrimmed.split(':').length == 3) {
-          let parts = strTrimmed.split(':');
-          let hours = parseFloat(parts[0]);
-          let minutes = parseFloat(parts[1]);
-          let seconds = parseFloat(parts[2].substring(0, 5));
-          resolve({
-            hours: hours,
-            minutes: minutes,
-            seconds: seconds  // all floats
-          });
-          return;
-        }
-        reject(`Failed to get duration time units: Unexpected error parsing duration string`);
-      }).catch(error => `Failed to get duration time units: ${error}`);
+      reject(`Failed to get duration time units: Unexpected error parsing duration string`);
     }).catch(error => `Failed to get duration time units: ${error}`);
   });
 }
@@ -156,24 +135,17 @@ function DurationInSeconds(src) {
     return Promise.reject(`Failed to get duration time units: ${srcError}`);
 
   return new Promise((resolve, reject) => {
-    LINUX.Path.Exists(src, EXECUTOR).then(exists => {
-      if (!exists) {
-        reject(`Failed to get duration in seconds: Path does not exist: ${src}`);
+    DurationString(src).then(string => {
+      let strTrimmed = string.trim();
+      if (strTrimmed && strTrimmed.split(':').length == 3) {
+        let parts = strTrimmed.split(':');
+        let hours = parseFloat(parts[0]);
+        let minutes = parseFloat(parts[1]);
+        let seconds = parseFloat(parts[2].substring(0, 5));
+        resolve((hours * 3600) + (minutes * 60) + seconds);  // float
         return;
       }
-
-      DurationString(src).then(string => {
-        let strTrimmed = string.trim();
-        if (strTrimmed && strTrimmed.split(':').length == 3) {
-          let parts = strTrimmed.split(':');
-          let hours = parseFloat(parts[0]);
-          let minutes = parseFloat(parts[1]);
-          let seconds = parseFloat(parts[2].substring(0, 5));
-          resolve((hours * 3600) + (minutes * 60) + seconds);  // float
-          return;
-        }
-        reject(`Failed to get duration in seconds: Unexpected error happened while parsing duration string`);
-      }).catch(error => `Failed to get duration in seconds: ${error}`);
+      reject(`Failed to get duration in seconds: Unexpected error happened while parsing duration string`);
     }).catch(error => `Failed to get duration in seconds: ${error}`);
   });
 }
@@ -188,20 +160,13 @@ function Info(src) {
     return Promise.reject(`Failed to get info: ${srcError}`);
 
   return new Promise((resolve, reject) => {
-    LINUX.Path.Exists(src, EXECUTOR).then(exists => {
-      if (!exists) {
-        reject({ info: null, error: `Failed to get info: Path does not exist: ${src}` });
+    let args = ['-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', src];
+    EXECUTOR.Execute('ffprobe', args).then(output => {
+      if (output.stderr) {
+        reject(`Failed to get info: ${output.stderr}`);
         return;
       }
-
-      let args = ['-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', src];
-      EXECUTOR.Execute('ffprobe', args).then(output => {
-        if (output.stderr) {
-          reject(`Failed to get info: ${output.stderr}`);
-          return;
-        }
-        resolve(JSON.parse(output.stdout.trim())); // returns { "streams": {...}, "formats": {...} }
-      }).catch(error => `Failed to get info: ${error}`);
+      resolve(JSON.parse(output.stdout.trim())); // returns { "streams": {...}, "formats": {...} }
     }).catch(error => `Failed to get info: ${error}`);
   });
 }
