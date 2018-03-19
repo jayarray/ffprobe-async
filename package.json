@@ -2,7 +2,7 @@
   "name": "ffprobe-async",
   "version": "1.0.4",
   "description": "An API for ffprobe commands",
-  "main": "ffprobe-async.js",
+  "main": "api.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
