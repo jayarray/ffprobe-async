@@ -1,6 +1,6 @@
 {
   "name": "ffprobe-async",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "An API for ffprobe commands",
   "main": "api.js",
   "scripts": {
