@@ -21,6 +21,7 @@ function SourceError(src) {
 // FUNCTIONS
 
 /**
+ * List all codec types.
  * @param {string} src Source
  * @returns {Promise<Array<string>>} Returns a promise. If it resolves, it returns an array of strings. Else, it returns an error.
  */
@@ -52,6 +53,7 @@ function CodecTypes(src) { // returns 'audio', 'video', or both
 }
 
 /**
+ * Check if source is a video file.
  * @param {string} src Source
  * @returns {Promise<boolean>} Returns a promise. If it resolves, it returns a boolean value. Else, it returns an error.
  */
@@ -64,6 +66,7 @@ function IsVideo(src) {
 }
 
 /**
+ * Check if source is an audio file.
  * @param {string} src Source
  * @returns {Promise<boolean>} Returns a promise. If it resolves, it returns a boolean value. Else, it returns an error.
  */
@@ -76,6 +79,7 @@ function IsAudio(src) {
 }
 
 /**
+ * Get duration of source (as string)
  * @param {string} src Source
  * @returns {Promise<string>} Returns a promise. If it resolves, it returns a string. Else, it returns an error.
  */
@@ -97,6 +101,7 @@ function DurationString(src) {
 }
 
 /**
+ * Get duration of source as an object with properties (i.e. hours. minutes. seconds).
  * @param {string} src Source
  * @returns {Promise<{hours: number, minutes: number, seconds: number}>} Returns a promise. If it resolves, it returns an object. Else, it returns an error.
  */
@@ -126,6 +131,7 @@ function DurationTimeUnits(src) {
 }
 
 /**
+ * Get duration of source (in seconds)
  * @param {string} src Source
  * @returns {Promise<number>} Returns a promise. If it resolves, it returns a number. Else, it returns an error.
  */
@@ -151,6 +157,7 @@ function DurationInSeconds(src) {
 }
 
 /**
+ * Get source info (i.e. streams, formats, etc).
  * @param {string} src Source
  * @returns {Promise<{streams: Object, formats: Object}>} Returns a promise. If it resolves, it returns an object. Else, it returns an error.
  */
